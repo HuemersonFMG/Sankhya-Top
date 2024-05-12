@@ -1,0 +1,350 @@
+<gadget>
+  <prompt-parameters>
+    <parameter id="ORDEMCARGA" description="Ordem de Carga" metadata="integer" required="false" keep-last="true" keep-date="false" order="0"/>
+    <parameter id="DTINIC" description="Data de Início" metadata="datePeriod" required="false" keep-last="true" keep-date="false" order="1"/>
+    <parameter id="CODPARC" description="Parceiro" metadata="entity:Parceiro@CODPARC" required="false" keep-last="true" keep-date="false" order="2"/>
+    <parameter id="NUMNOTA" description="Nro. da Nota Fiscal" metadata="integer" required="false" keep-last="true" keep-date="false" order="4"/>
+    <parameter id="NUNOTA" description="Nro. Único" metadata="integer" required="false" keep-last="true" keep-date="false" order="5"/>
+    <parameter id="CODPARCMOT" description="Motorista" metadata="entity:AD_VGFMOTORISTA@CODPARC" required="false" keep-last="false" keep-date="false" order="6"/>
+    <parameter id="CODCONTATO" description="Contato de Entrega" metadata="entity:Contato@CODPARC,CODCONTATO" required="false" keep-last="false" keep-date="false" order="7"/>
+  </prompt-parameters>
+  <level id="lvl_seahzf" description="Principal">
+    <container orientacao="V" tamanhoRelativo="100">
+      <container orientacao="V" tamanhoRelativo="50">
+        <grid id="grd_seahzg" entityName="AD_BOTACAODASHAPP" multiplaSelecao="N" useNewGrid="S">
+          <expression type="sql" data-source="MGEDS"><![CDATA[SELECT ORDEMCARGA,
+                NUNOTA,
+                NUMNOTA,
+                PARCEIRO,
+                VLRNOTA,
+                INICIO,
+                CHECKIN,
+                ASSINATURA,
+                CHECKOUT,
+                PLACA,
+                MOTORISTA,
+                VOLUME,
+                PESO, 
+                SEQCARGA,
+                QTD_OCORRENC,
+                    QTD_FOTOS,
+                TIPO_DOC,
+                DOC_RECEBEDOR,
+                RECEBEDOR,
+                MODENTREGA,
+                DTINICOC
+
+            FROM (
+            SELECT CAB.ORDEMCARGA,
+                CAB.NUNOTA,
+                CAB.NUMNOTA,
+                    CAB.CODPARC  || '-' || PAR.NOMEPARC AS PARCEIRO,
+                
+                CAB.VLRNOTA,
+                CAB.AD_APPDTINICENTR AS INICIO,
+                CAB.AD_APPCHECKINDH AS CHECKIN,
+                CAB.AD_APPASSINADODH AS ASSINATURA,
+                CAB.AD_APPCHECKOUTDH AS CHECKOUT,
+                (SELECT NVL(VEI.PLACA,'') FROM TGFVEI VEI WHERE VEI.CODVEICULO = ORD.CODVEICULO) AS PLACA,
+                (SELECT NVL(NOMEPARC,'') FROM TGFPAR P WHERE P.CODPARC = ORD.CODPARCMOTORISTA) AS MOTORISTA,
+                0 AS VOLUME,
+                CAB.PESO, 
+                CAB.SEQCARGA,
+                (SELECT COUNT(1) FROM AD_APPENTROCORRNOT AD WHERE AD.NUNOTA = CAB.NUNOTA) AS QTD_OCORRENC,
+                    (SELECT COUNT(1) FROM AD_APPENTFOTO AD WHERE AD.NUNOTA = CAB.NUNOTA) AS QTD_FOTOS,
+                CAB.AD_APPTIPDOCRECEBEDOR AS TIPO_DOC,
+                CAB.AD_APPDOCRECEBEDOR AS DOC_RECEBEDOR,
+                CAB.AD_APPRECEBEDOR AS RECEBEDOR,
+                
+                CASE WHEN CAB.MODENTREGA = 'A' THEN 'Auto Distribuição'
+                        WHEN CAB.MODENTREGA = 'F' THEN 'Multientrega Faturar Para'
+                        WHEN CAB.MODENTREGA = 'M' THEN 'Multientrega'
+                        WHEN CAB.MODENTREGA = 'N' THEN 'Entrega Direta'
+                        WHEN CAB.MODENTREGA = 'P' THEN 'Porta-a-Porta'
+                        WHEN CAB.MODENTREGA = 'S' THEN 'Sem Entrega'
+                ELSE 'T' END AS MODENTREGA, 
+                ORD.DTINIC AS DTINICOC
+                
+            FROM TGFCAB CAB, TGFORD ORD, TGFPAR PAR, TGFTOP T
+            WHERE CAB.ORDEMCARGA = ORD.ORDEMCARGA
+            AND   CAB.CODEMP = ORD.CODEMP
+            AND   CAB.CODTIPOPER = T.CODTIPOPER
+            AND   CAB.DHTIPOPER = T.DHALTER
+            AND   CAB.CODPARC = PAR.CODPARC
+            AND   CAB.ORDEMCARGA > 0
+            AND   (CAB.ORDEMCARGA = :ORDEMCARGA OR :ORDEMCARGA IS NULL )
+            AND   ( (ORD.DTINIC >= :DTINIC.INI AND ORD.DTINIC <= :DTINIC.FIN) OR :DTINIC.INI IS NULL )
+            AND   (CAB.CODPARC IN :CODPARC OR :CODPARC IS NULL )
+            AND   (CAB.NUMNOTA = :NUMNOTA OR :NUMNOTA IS NULL )
+            AND   (CAB.NUNOTA = :NUNOTA OR :NUNOTA IS NULL )
+            AND   ( ORD.CODPARCMOTORISTA IN :CODPARCMOT OR :CODPARCMOT IS NULL )
+
+            AND   T.AD_APPCONTRENTR = 'S'
+            AND   NVL(CAB.MODENTREGA,'P') <> 'A'
+
+            UNION ALL
+
+            SELECT CAB.ORDEMCARGA,
+                CAB.NUNOTA,
+                CAB.NUMNOTA,
+                CTT.NOMECONTATO AS PARCEIRO,
+                
+                CAB.VLRNOTA,
+                NULL AS INICIO,
+                NULL AS CHECKIN,
+                NULL AS ASSINATURA,
+                NULL AS CHECKOUT,
+                (SELECT NVL(VEI.PLACA,'') FROM TGFVEI VEI WHERE VEI.CODVEICULO = ORD.CODVEICULO) AS PLACA,
+                (SELECT NVL(NOMEPARC,'') FROM TGFPAR P WHERE P.CODPARC = ORD.CODPARCMOTORISTA) AS MOTORISTA,
+                0 AS VOLUME,
+                0 AS PESO, 
+                0 AS SEQCARGA,
+                0 AS QTD_OCORRENC,
+                    0 AS QTD_FOTOS,
+                CAB.AD_APPTIPDOCRECEBEDOR AS TIPO_DOC,
+                CAB.AD_APPDOCRECEBEDOR AS DOC_RECEBEDOR,
+                CAB.AD_APPRECEBEDOR AS RECEBEDOR,
+                
+                CASE WHEN CAB.MODENTREGA = 'A' THEN 'Auto Distribuição'
+                        WHEN CAB.MODENTREGA = 'F' THEN 'Multientrega Faturar Para'
+                        WHEN CAB.MODENTREGA = 'M' THEN 'Multientrega'
+                        WHEN CAB.MODENTREGA = 'N' THEN 'Entrega Direta'
+                        WHEN CAB.MODENTREGA = 'P' THEN 'Porta-a-Porta'
+                        WHEN CAB.MODENTREGA = 'S' THEN 'Sem Entrega'
+                ELSE 'T' END AS MODENTREGA, 
+                ORD.DTINIC AS DTINICOC
+                
+            FROM TGFCAB CAB, TGFORD ORD, TGFPAR PAR, TGFTOP T, TGFCTT CTT
+            WHERE CAB.ORDEMCARGA = ORD.ORDEMCARGA
+            AND   CAB.CODEMP = ORD.CODEMP
+            AND   CAB.CODTIPOPER = T.CODTIPOPER
+            AND   CAB.DHTIPOPER = T.DHALTER
+            AND   CAB.CODPARC = PAR.CODPARC
+            AND   PAR.CODPARC = CTT.CODPARC
+            AND   CTT.ATIVO = 'S'
+            AND   CAB.ORDEMCARGA > 0
+            AND   (CAB.ORDEMCARGA = :ORDEMCARGA OR :ORDEMCARGA IS NULL )
+            AND   ( (ORD.DTINIC >= :DTINIC.INI AND ORD.DTINIC <= :DTINIC.FIN) OR :DTINIC.INI IS NULL )
+            AND   (CAB.CODPARC IN :CODPARC OR :CODPARC IS NULL )
+            AND   (CAB.NUMNOTA = :NUMNOTA OR :NUMNOTA IS NULL )
+            AND   (CAB.NUNOTA = :NUNOTA OR :NUNOTA IS NULL )
+            AND   ( ORD.CODPARCMOTORISTA IN :CODPARCMOT OR :CODPARCMOT IS NULL )
+            AND   T.AD_APPCONTRENTR = 'S'
+            AND   NVL(CAB.MODENTREGA,'P') = 'A'
+
+)]]></expression>
+          <metadata>
+            <field name="ORDEMCARGA" label="ORDEMCARGA" type="I" visible="true" useFooter="false"/>
+            <field name="NUNOTA" label="NUNOTA" type="I" visible="true" useFooter="false"/>
+            <field name="NUMNOTA" label="NUMNOTA" type="I" visible="true" useFooter="false"/>
+            <field name="PARCEIRO" label="PARCEIRO" type="S" visible="true" useFooter="false"/>
+            <field name="VLRNOTA" label="VLRNOTA" type="F" visible="true" useFooter="false" mask="#.##0,00;-n"/>
+            <field name="INICIO" label="INICIO" type="T" visible="true" useFooter="false"/>
+            <field name="CHECKIN" label="CHECKIN" type="T" visible="true" useFooter="false"/>
+            <field name="ASSINATURA" label="ASSINATURA" type="T" visible="true" useFooter="false">
+              <formatter isEmpty="true"><![CDATA[<span style="; src:iconOvalRed; somente-icone:S">$VALUE</span>]]></formatter>
+            </field>
+            <field name="CHECKOUT" label="CHECKOUT" type="T" visible="true" useFooter="false"/>
+            <field name="PLACA" label="PLACA" type="S" visible="true" useFooter="false"/>
+            <field name="MOTORISTA" label="MOTORISTA" type="S" visible="true" useFooter="false"/>
+            <field name="VOLUME" label="VOLUME" type="S" visible="true" useFooter="false"/>
+            <field name="PESO" label="PESO" type="F" visible="true" useFooter="false"/>
+            <field name="SEQCARGA" label="SEQCARGA" type="I" visible="true" useFooter="false"/>
+            <field name="QTD_OCORRENC" label="QTD_OCORRENC" type="I" visible="true" useFooter="false">
+              <formatter greaterThan="0"><![CDATA[<span style="; background-color:#FF0000; src:iconWarning">$VALUE</span>]]></formatter>
+            </field>
+            <field name="QTD_FOTOS" label="QTD_FOTOS" type="I" visible="true" useFooter="false">
+              <formatter greaterThan="0"><![CDATA[<span style="; background-color:#FF0000; src:iconWarning">$VALUE</span>]]></formatter>
+            </field>
+            <field name="TIPO_DOC" label="TIPO_DOC" type="S" visible="true" useFooter="false"/>
+            <field name="DOC_RECEBEDOR" label="DOC_RECEBEDOR" type="S" visible="true" useFooter="false"/>
+            <field name="RECEBEDOR" label="RECEBEDOR" type="S" visible="true" useFooter="false"/>
+            <field name="MODENTREGA" label="MODENTREGA" type="S" visible="true" useFooter="false"/>
+            <field name="DTINICOC" label="DTINICOC" type="D" visible="true" useFooter="false"/>
+          </metadata>
+          <on-click navigate-to="lvl_seahzf"/>
+        </grid>
+      </container>
+      <container orientacao="H" tamanhoRelativo="50">
+        <container orientacao="V" tamanhoRelativo="33">
+          <chart id="cht_seahzq" type="bar">
+            <expression type="sql" data-source="MGEDS"><![CDATA[SELECT
+                        'Qtd. Entregas' AS STATUS      ,
+                        COUNT(1)        AS QTD_ENTREGAS,
+                        0               AS QTD
+                FROM
+                        TGFCAB                                                                                                                                        CAB         ,
+                        TGFORD ORD
+                        WHERE CAB.ORDEMCARGA = ORD.ORDEMCARGA
+                        AND CAB.CODEMP = ORD.CODEMP
+                AND   (CAB.ORDEMCARGA = :ORDEMCARGA OR :ORDEMCARGA IS NULL )
+                AND   ( (ORD.DTINIC >= :DTINIC.INI AND ORD.DTINIC <= :DTINIC.FIN) OR :DTINIC.INI IS NULL )
+                AND   (CAB.CODPARC IN :CODPARC OR :CODPARC IS NULL )
+                AND   (CAB.NUMNOTA = :NUMNOTA OR :NUMNOTA IS NULL )
+                AND   (CAB.NUNOTA = :NUNOTA OR :NUNOTA IS NULL )
+                AND   ( ORD.CODPARCMOTORISTA IN :CODPARCMOT OR :CODPARCMOT IS NULL )
+
+                        
+                        UNION ALL
+                        SELECT 'Qtd. Iniciadas' AS STATUS      ,
+                        0                                                                                                                                          AS QTD_ENTREGAS,
+                        COUNT(AD_APPDTINICENTR)                                                                                                                    AS QTD_INICIADAS
+                FROM
+                        TGFCAB                                                                                                                                       CAB,
+                        TGFORD ORD
+                        WHERE CAB.ORDEMCARGA = ORD.ORDEMCARGA
+                        AND CAB.CODEMP = ORD.CODEMP
+                AND   (CAB.ORDEMCARGA = :ORDEMCARGA OR :ORDEMCARGA IS NULL )
+                AND   ( (ORD.DTINIC >= :DTINIC.INI AND ORD.DTINIC <= :DTINIC.FIN) OR :DTINIC.INI IS NULL )
+                AND   (CAB.CODPARC IN :CODPARC OR :CODPARC IS NULL )
+                AND   (CAB.NUMNOTA = :NUMNOTA OR :NUMNOTA IS NULL )
+                AND   (CAB.NUNOTA = :NUNOTA OR :NUNOTA IS NULL )
+                AND   ( ORD.CODPARCMOTORISTA IN :CODPARCMOT OR :CODPARCMOT IS NULL )
+
+                        
+                        UNION ALL
+                        
+                        SELECT 'Qtd. Checkins' AS STATUS,0 AS QTD_ENTREGAS,
+                        COUNT(AD_APPCHECKINDH)                                                                                                                    AS QTD_CHECKINS
+                FROM
+                        TGFCAB                                                                                                                                          CAB,
+                        TGFORD ORD
+                        
+                        WHERE CAB.ORDEMCARGA = ORD.ORDEMCARGA
+                        AND CAB.CODEMP = ORD.CODEMP
+                AND   (CAB.ORDEMCARGA = :ORDEMCARGA OR :ORDEMCARGA IS NULL )
+                AND   ( (ORD.DTINIC >= :DTINIC.INI AND ORD.DTINIC <= :DTINIC.FIN) OR :DTINIC.INI IS NULL )
+                AND   (CAB.CODPARC IN :CODPARC OR :CODPARC IS NULL )
+                AND   (CAB.NUMNOTA = :NUMNOTA OR :NUMNOTA IS NULL )
+                AND   (CAB.NUNOTA = :NUNOTA OR :NUNOTA IS NULL )
+                AND   ( ORD.CODPARCMOTORISTA IN :CODPARCMOT OR :CODPARCMOT IS NULL )
+
+                        
+                        UNION ALL
+                        
+                        SELECT 'Qtd. Assinaturas' AS STATUS,0 AS QTD_ENTREGAS,
+                        COUNT(AD_APPASSINADODH)                                                                                                                      AS QTD_ASSINATURAS
+                FROM
+                        TGFCAB                                                                                                                                       CAB,
+                        TGFORD ORD
+                        WHERE CAB.ORDEMCARGA = ORD.ORDEMCARGA
+                        AND CAB.CODEMP = ORD.CODEMP
+                AND   (CAB.ORDEMCARGA = :ORDEMCARGA OR :ORDEMCARGA IS NULL )
+                AND   ( (ORD.DTINIC >= :DTINIC.INI AND ORD.DTINIC <= :DTINIC.FIN) OR :DTINIC.INI IS NULL )
+                AND   (CAB.CODPARC IN :CODPARC OR :CODPARC IS NULL )
+                AND   (CAB.NUMNOTA = :NUMNOTA OR :NUMNOTA IS NULL )
+                AND   (CAB.NUNOTA = :NUNOTA OR :NUNOTA IS NULL )
+                AND   ( ORD.CODPARCMOTORISTA IN :CODPARCMOT OR :CODPARCMOT IS NULL )
+
+                        
+                        UNION ALL
+                        SELECT 'Qtd. Checkout' AS STATUS,0 AS QTD_ENTREGAS,
+                        COUNT(AD_APPCHECKOUTDH)                                                                                                                   AS QTD_CHECKOUT
+                FROM
+                        TGFCAB CAB,
+                        TGFORD ORD
+                        WHERE CAB.ORDEMCARGA = ORD.ORDEMCARGA
+                        AND CAB.CODEMP = ORD.CODEMP
+                AND   (CAB.ORDEMCARGA = :ORDEMCARGA OR :ORDEMCARGA IS NULL )
+                AND   ( (ORD.DTINIC >= :DTINIC.INI AND ORD.DTINIC <= :DTINIC.FIN) OR :DTINIC.INI IS NULL )
+                AND   (CAB.CODPARC IN :CODPARC OR :CODPARC IS NULL )
+                AND   (CAB.NUMNOTA = :NUMNOTA OR :NUMNOTA IS NULL )
+                AND   (CAB.NUNOTA = :NUNOTA OR :NUNOTA IS NULL )
+                AND   ( ORD.CODPARCMOTORISTA IN :CODPARCMOT OR :CODPARCMOT IS NULL )
+]]></expression>
+            <metadata>
+              <field name="STATUS" label="STATUS" type="S" visible="true" useFooter="false"/>
+              <field name="QTD_ENTREGAS" label="QTD_ENTREGAS" type="F" visible="true" useFooter="false"/>
+              <field name="QTD" label="QTD" type="F" visible="true" useFooter="false"/>
+            </metadata>
+            <series>
+              <set type="stacked">
+                <serie type="bar">
+                  <xField>$QTD_ENTREGAS</xField>
+                  <yField>$STATUS</yField>
+                  <color>0xff</color>
+                </serie>
+                <serie type="bar">
+                  <xField>$QTD</xField>
+                  <yField>$STATUS</yField>
+                  <color>0x990099</color>
+                </serie>
+              </set>
+            </series>
+          </chart>
+        </container>
+        <container orientacao="V" tamanhoRelativo="33">
+          <container orientacao="V" tamanhoRelativo="100">
+            <simple-value id="svl_sppvqi">
+              <value-expression><![CDATA[<div style='text-align: center;'><span style='font-size: 18px; color: #000000;'>ORDEM DE CARGA: <b>:ORDEMCARGA</b></span></div></span>]]></value-expression>
+            </simple-value>
+          </container>
+          <container orientacao="H" tamanhoRelativo="314">
+            <container orientacao="V" tamanhoRelativo="50">
+              <simple-value id="svl_sppvn7">
+                <value-expression><![CDATA[<div style='text-align: right;'><span style='font-size: 18px; color: #000000;'>
+MOTORISTA: 
+PLACA: 
+PESO: 
+VOLUME: 
+QTD. NOTAS:
+VLR. TOTAL: </div></span>]]></value-expression>
+              </simple-value>
+            </container>
+            <container orientacao="V" tamanhoRelativo="50">
+              <simple-value id="svl_sppvoe">
+                <expression type="sql" data-source="MGEDS"><![CDATA[SELECT
+        SUM ((SELECT SUM(NVL(PRO.PESOLIQ, 0) * I.QTDNEG)FROM TGFITE I INNER
+JOIN
+        TGFPRO PRO
+ON
+        (
+                PRO.CODPROD = I.CODPROD) WHERE I.SEQUENCIA > 0 AND I.NUNOTA = CAB.NUNOTA)) AS PESO_LIQ ,
+        SUM(CAB.QTDVOL)                                                                 AS VOLUME   ,
+        COUNT(CAB.NUNOTA)                                                               AS QTD_NOTAS,
+        SUM(CAB.VLRNOTA)                                                                AS VLRNOTA  ,
+        (
+                SELECT
+                        MAX(NVL(VEI.PLACA,''))
+                FROM
+                        TGFVEI VEI
+                WHERE
+                        VEI.CODVEICULO = ORD.CODVEICULO) AS PLACA,
+        (
+                SELECT
+                        NVL(NOMEPARC,'')
+                FROM
+                        TGFPAR P
+                WHERE
+                        P.CODPARC = ORD.CODPARCMOTORISTA) AS MOTORISTA
+FROM
+        TGFCAB                                                                                                             CAB           ,
+        TGFORD ORD
+		WHERE CAB.ORDEMCARGA = ORD.ORDEMCARGA
+		AND CAB.CODEMP = ORD.CODEMP
+           AND   (CAB.ORDEMCARGA = :ORDEMCARGA OR :ORDEMCARGA IS NULL )
+		GROUP BY ORD.CODVEICULO,
+        ORD.CODPARCMOTORISTA]]></expression>
+                <metadata>
+                  <field name="PESO_LIQ" label="PESO_LIQ" type="F" visible="true" useFooter="false" mask="#.##0,00;-n"/>
+                  <field name="VOLUME" label="VOLUME" type="F" visible="true" useFooter="false" mask="#.##0,00;-n"/>
+                  <field name="QTD_NOTAS" label="QTD_NOTAS" type="F" visible="true" useFooter="false" mask="#.##0,00;-n"/>
+                  <field name="VLRNOTA" label="VLRNOTA" type="F" visible="true" useFooter="false" mask="#.##0,00;-n"/>
+                  <field name="PLACA" label="PLACA" type="S" visible="true" useFooter="false"/>
+                  <field name="MOTORISTA" label="MOTORISTA" type="S" visible="true" useFooter="false"/>
+                </metadata>
+                <value-expression><![CDATA[<b><div style='text-align: right;'><span style='font-size: 18px; color: #000000;'>
+                    $MOTORISTA
+                    $PLACA
+                    $PESO_LIQ
+                    $VOLUME
+                    $QTD_NOTAS
+                    $VLRNOTA</div></span></b>]]></value-expression>
+              </simple-value>
+            </container>
+          </container>
+        </container>
+      </container>
+    </container>
+  </level>
+</gadget>
