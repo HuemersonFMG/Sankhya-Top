@@ -1,0 +1,218 @@
+<gadget>
+    <level id="lvl_a1c992t" description="Principal">
+      <container orientacao="H" tamanhoRelativo="100">
+        <container orientacao="V" tamanhoRelativo="100">
+          <container orientacao="V" tamanhoRelativo="25">
+            <simple-value id="svl_a1c992u">
+              <expression type="sql" data-source="MGEDS"><![CDATA[SELECT COUNT(DISTINCT(CAB.ORDEMCARGA)) AS QTD_OCS,
+         COUNT(CAB.NUNOTA) AS QTD_ENTREGAS
+         
+  FROM TGFCAB CAB, TGFORD ORD, TGFPAR PAR, TGFTOP T
+  WHERE CAB.ORDEMCARGA = ORD.ORDEMCARGA
+  AND   CAB.CODEMP = ORD.CODEMP
+  AND   CAB.CODTIPOPER = T.CODTIPOPER
+  AND   CAB.DHTIPOPER = T.DHALTER
+  AND   CAB.CODPARC = PAR.CODPARC
+  AND   CAB.ORDEMCARGA > 0
+  AND   CAB.DTENTSAI > '01/07/2023'
+  /*AND   CAB.DTENTSAI >= :PERIODO.INI
+  AND   CAB.DTENTSAI <= :PERIODO.FIN*/
+  AND   T.AD_APPCONTRENTR = 'S'
+  ]]></expression>
+              <metadata>
+                <field name="QTD_OCS" label="QTD_OCS" type="I" visible="true" useFooter="false"/>
+                <field name="QTD_ENTREGAS" label="QTD_ENTREGAS" type="I" visible="true" useFooter="false"/>
+              </metadata>
+              <value-expression><![CDATA[<header >
+    <div style='text-align: center;'><span style='font-size: 16px; font-family: Arial, Helvetica, sans-serif;'><b>Qtd. Entregas / OCs</b></span></div>
+    <div style="background-color: #363636; padding: 5px; text-align: center; color: white;"><h2>$QTD_ENTREGAS / $QTD_OCS</h2></div>
+  </header>]]></value-expression>
+            </simple-value>
+          </container>
+          <container orientacao="V" tamanhoRelativo="25">
+            <simple-value id="svl_a1c992z">
+              <expression type="sql" data-source="MGEDS"><![CDATA[SELECT 
+         COUNT(CAB.AD_APPCHECKOUTDH) AS QTD_CHECKOUTS
+         
+  FROM TGFCAB CAB, TGFORD ORD, TGFPAR PAR, TGFTOP T
+  WHERE CAB.ORDEMCARGA = ORD.ORDEMCARGA
+  AND   CAB.CODEMP = ORD.CODEMP
+  AND   CAB.CODTIPOPER = T.CODTIPOPER
+  AND   CAB.DHTIPOPER = T.DHALTER
+  AND   CAB.CODPARC = PAR.CODPARC
+  AND   CAB.ORDEMCARGA > 0
+  AND   CAB.DTENTSAI > '01/07/2023'
+  AND   T.AD_APPCONTRENTR = 'S'
+  ]]></expression>
+              <metadata>
+                <field name="QTD_CHECKOUTS" label="QTD_CHECKOUTS" type="I" visible="true" useFooter="false"/>
+              </metadata>
+              <value-expression><![CDATA[<header >
+    <div style='text-align: center;'><span style='font-size: 16px; font-family: Arial, Helvetica, sans-serif;'><b>Finalizadas</b></span></div>
+    <div style="background-color: #006400; padding: 5px; text-align: center; color: white;"><h2>$QTD_CHECKOUTS</h2></div>
+  </header>]]></value-expression>
+            </simple-value>
+          </container>
+          <container orientacao="V" tamanhoRelativo="25">
+            <simple-value id="svl_a1c9921">
+              <expression type="sql" data-source="MGEDS"><![CDATA[SELECT 
+         CASE WHEN COUNT(CAB.AD_APPCHECKOUTDH) > 0 THEN 
+           ROUND((COUNT(CAB.AD_APPCHECKOUTDH) * 100) / COUNT(CAB.NUNOTA),2) ELSE 0 END  AS PERC_ENTREG
+         
+  FROM TGFCAB CAB, TGFORD ORD, TGFPAR PAR, TGFTOP T
+  WHERE CAB.ORDEMCARGA = ORD.ORDEMCARGA
+  AND   CAB.CODEMP = ORD.CODEMP
+  AND   CAB.CODTIPOPER = T.CODTIPOPER
+  AND   CAB.DHTIPOPER = T.DHALTER
+  AND   CAB.CODPARC = PAR.CODPARC
+  AND   CAB.ORDEMCARGA > 0
+  AND   CAB.DTENTSAI > '01/07/2023'
+  AND   T.AD_APPCONTRENTR = 'S'
+  ]]></expression>
+              <metadata>
+                <field name="PERC_ENTREG" label="PERC_ENTREG" type="F" visible="true" useFooter="false" mask="#.##0,00;-n"/>
+              </metadata>
+              <value-expression><![CDATA[<header >
+    <div style='text-align: center;'><span style='font-size: 16px; font-family: Arial, Helvetica, sans-serif;'><b>% Finalizadas</b></span></div>
+    <div style="background-color: #0000CD; padding: 5px; text-align: center; color: white;"><h2>$PERC_ENTREG</h2></div>
+  </header>]]></value-expression>
+            </simple-value>
+          </container>
+          <container orientacao="V" tamanhoRelativo="25">
+            <simple-value id="svl_a1c9923">
+              <expression type="sql" data-source="MGEDS"><![CDATA[SELECT 
+         COUNT(*) AS QTD_OCORRENC
+         
+  FROM TGFCAB CAB, TGFORD ORD, TGFPAR PAR, TGFTOP T, AD_APPENTROCORRNOT AD
+  WHERE CAB.ORDEMCARGA = ORD.ORDEMCARGA
+  AND   CAB.CODEMP = ORD.CODEMP
+  AND   CAB.CODTIPOPER = T.CODTIPOPER
+  AND   CAB.DHTIPOPER = T.DHALTER
+  AND   CAB.CODPARC = PAR.CODPARC
+  AND   CAB.NUNOTA = AD.NUNOTA
+  AND   CAB.ORDEMCARGA > 0
+  AND   CAB.DTENTSAI > '01/07/2023'
+  AND   T.AD_APPCONTRENTR = 'S'
+  ]]></expression>
+              <metadata>
+                <field name="QTD_OCORRENC" label="QTD_OCORRENC" type="I" visible="true" useFooter="false"/>
+              </metadata>
+              <value-expression><![CDATA[<header >
+    <div style='text-align: center;'><span style='font-size: 16px; font-family: Arial, Helvetica, sans-serif;'><b>Ocorrências</b></span></div>
+    <div style="background-color: #FF0000; padding: 5px; text-align: center; color: white;"><h2>$QTD_OCORRENC</h2></div>
+  </header>]]></value-expression>
+            </simple-value>
+          </container>
+        </container>
+        <container orientacao="V" tamanhoRelativo="576">
+          <container orientacao="H" tamanhoRelativo="1416">
+            <html5component id="html5_adafj3p" entryPoint="JSP_MODELO.jsp"/>
+          </container>
+          <container orientacao="H" tamanhoRelativo="150">
+            <container orientacao="V" tamanhoRelativo="25">
+              <simple-value id="svl_a4k6dhi">
+                <expression type="sql" data-source="MGEDS"><![CDATA[SELECT 
+         COUNT(CAB.NUNOTA) AS QTD_ENTREGAS
+         
+  FROM TGFCAB CAB, TGFORD ORD, TGFPAR PAR, TGFTOP T
+  WHERE CAB.ORDEMCARGA = ORD.ORDEMCARGA
+  AND   CAB.CODEMP = ORD.CODEMP
+  AND   CAB.CODTIPOPER = T.CODTIPOPER
+  AND   CAB.DHTIPOPER = T.DHALTER
+  AND   CAB.CODPARC = PAR.CODPARC
+  AND   CAB.ORDEMCARGA > 0
+  AND   CAB.DTENTSAI > '01/07/2023'
+  AND   T.AD_APPCONTRENTR = 'S'
+  ]]></expression>
+                <metadata>
+                  <field name="QTD_ENTREGAS" label="QTD_ENTREGAS" type="I" visible="true" useFooter="false"/>
+                </metadata>
+                <value-expression><![CDATA[<header >
+  <b>  <div style="background-color: #0099FF; padding: 2px; text-align: center; color: black;">Pendente</div></b>
+  </header>]]></value-expression>
+              </simple-value>
+            </container>
+            <container orientacao="V" tamanhoRelativo="25">
+              <simple-value id="svl_a4k6dik">
+                <expression type="sql" data-source="MGEDS"><![CDATA[SELECT 
+         COUNT(CAB.NUNOTA) AS QTD_ENTREGAS
+         
+  FROM TGFCAB CAB, TGFORD ORD, TGFPAR PAR, TGFTOP T
+  WHERE CAB.ORDEMCARGA = ORD.ORDEMCARGA
+  AND   CAB.CODEMP = ORD.CODEMP
+  AND   CAB.CODTIPOPER = T.CODTIPOPER
+  AND   CAB.DHTIPOPER = T.DHALTER
+  AND   CAB.CODPARC = PAR.CODPARC
+  AND   CAB.ORDEMCARGA > 0
+  AND   CAB.DTENTSAI > '01/07/2023'
+  AND   T.AD_APPCONTRENTR = 'S'
+  ]]></expression>
+                <metadata>
+                  <field name="QTD_ENTREGAS" label="QTD_ENTREGAS" type="I" visible="true" useFooter="false"/>
+                </metadata>
+                <value-expression><![CDATA[<header >
+  <b>  <div style="background-color: #FFFF00; padding: 2px; text-align: center; color: black;">Em andamento</div></b>
+  </header>]]></value-expression>
+              </simple-value>
+            </container>
+            <container orientacao="V" tamanhoRelativo="25">
+              <simple-value id="svl_a4k6dim">
+                <expression type="sql" data-source="MGEDS"><![CDATA[SELECT 
+         COUNT(CAB.NUNOTA) AS QTD_ENTREGAS
+         
+  FROM TGFCAB CAB, TGFORD ORD, TGFPAR PAR, TGFTOP T
+  WHERE CAB.ORDEMCARGA = ORD.ORDEMCARGA
+  AND   CAB.CODEMP = ORD.CODEMP
+  AND   CAB.CODTIPOPER = T.CODTIPOPER
+  AND   CAB.DHTIPOPER = T.DHALTER
+  AND   CAB.CODPARC = PAR.CODPARC
+  AND   CAB.ORDEMCARGA > 0
+  AND   CAB.DTENTSAI > '01/07/2023'
+  AND   T.AD_APPCONTRENTR = 'S'
+  ]]></expression>
+                <metadata>
+                  <field name="QTD_ENTREGAS" label="QTD_ENTREGAS" type="I" visible="true" useFooter="false"/>
+                </metadata>
+                <value-expression><![CDATA[<header >
+  <b>  <div style="background-color: #009933; padding: 2px; text-align: center; color: black;">Finalizada</div></b>
+  </header>]]></value-expression>
+              </simple-value>
+            </container>
+            <container orientacao="V" tamanhoRelativo="25">
+              <simple-value id="svl_a4k6dio">
+                <expression type="sql" data-source="MGEDS"><![CDATA[SELECT 
+         COUNT(CAB.NUNOTA) AS QTD_ENTREGAS
+         
+  FROM TGFCAB CAB, TGFORD ORD, TGFPAR PAR, TGFTOP T
+  WHERE CAB.ORDEMCARGA = ORD.ORDEMCARGA
+  AND   CAB.CODEMP = ORD.CODEMP
+  AND   CAB.CODTIPOPER = T.CODTIPOPER
+  AND   CAB.DHTIPOPER = T.DHALTER
+  AND   CAB.CODPARC = PAR.CODPARC
+  AND   CAB.ORDEMCARGA > 0
+  AND   CAB.DTENTSAI > '01/07/2023'
+  AND   T.AD_APPCONTRENTR = 'S'
+  ]]></expression>
+                <metadata>
+                  <field name="QTD_ENTREGAS" label="QTD_ENTREGAS" type="I" visible="true" useFooter="false"/>
+                </metadata>
+                <value-expression><![CDATA[<header >
+  <b>  <div style="background-color: #FF0000; padding: 2px; text-align: center; color: black;">Com ocorrência</div></b>
+  </header>]]></value-expression>
+              </simple-value>
+            </container>
+          </container>
+        </container>
+      </container>
+    </level>
+    <level id="lvl_adaw050" description="Entregas da OC">
+      <args>
+        <arg id="ORDEMCARGA" type="integer"/>
+      </args>
+      <container orientacao="V" tamanhoRelativo="100">
+        <simple-value id="svl_adaw051">
+          <value-expression><![CDATA[:ORDEMCARGA]]></value-expression>
+        </simple-value>
+      </container>
+    </level>
+  </gadget>

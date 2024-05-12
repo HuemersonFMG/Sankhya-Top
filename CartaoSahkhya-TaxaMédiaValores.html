@@ -1,0 +1,123 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+
+<html>
+
+<head>
+    	
+	<style>
+	
+	table {
+            border-collapse: collapse;
+			font-size: 10px;
+        }
+
+        table, th, td {
+            border: 1px solid black;
+            padding: 5px;
+        }
+    </style>
+	<snk:load/>
+	
+</head>
+<body>
+	<br>
+	<h1>Consulta - Taxa Média de Valores - Operações de Crédito</h1>
+	<h2>Banco Central - <a href="https://www.bcb.gov.br/estatisticas/txjuros" target="_blank">Acessar!</a></h2>
+
+	<br><br><br><br>
+    <label for="instituicao">Selecione a Instituição:</label>
+    <select id="instituicao" onchange="filterTable()">
+        <option value="">All</option>
+    </select>
+	<br><br>
+
+    <table id="dataTable">
+        <thead>
+            <tr>
+                <th>Data Inicial</th>
+                <th>Data Final</th>
+                <th>Código Segmento</th>
+                <th>Segmento</th>
+                <th>Código Modalidade</th>
+                <th>Modalidade</th>
+                <th>Posição</th>
+                <th>Instituição</th>
+                <th>Taxa Mensal</th>
+                <th>Taxa Anual</th>
+                <th>CNPJ</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <script>
+        // Fetch JSON para capturar dados:
+        fetch('https://olinda.bcb.gov.br/olinda/servico/taxaJuros/versao/v2/odata/ConsultaUnificada?$top=1000&$format=json')
+            .then(response => response.json())
+            .then(data => {
+                const instituicoes = data.value.map(item => item.InstituicaoFinanceira);
+
+                // Popular listbox com as instituições
+                const selectBox = document.getElementById('instituicao');
+                instituicoes.forEach(instituicao => {
+                    const option = document.createElement('option');
+                    option.value = instituicao;
+                    option.text = instituicao;
+                    selectBox.appendChild(option);
+                });
+
+                // Popular tabela com todos os dados
+                populateTable(data.value);
+            });
+
+        // Função para filtrar e popular tabela com base no filtro
+        function filterTable() {
+            const selectedInstituicao = document.getElementById('instituicao').value;
+            const tableData = document.getElementById('dataTable').getElementsByTagName('tbody')[0];
+
+            fetch('https://olinda.bcb.gov.br/olinda/servico/taxaJuros/versao/v2/odata/ConsultaUnificada?$top=1000&$format=json')
+                .then(response => response.json())
+                .then(data => {
+                    // Clear existing table rows
+                    tableData.innerHTML = '';
+
+                    // Filter and populate the table
+                    const filteredData = data.value.filter(item => item.InstituicaoFinanceira === selectedInstituicao || selectedInstituicao === '');
+                    populateTable(filteredData);
+                });
+        }
+
+        // Function to populate the table with data
+        function populateTable(data) {
+            const tableData = document.getElementById('dataTable').getElementsByTagName('tbody')[0];
+
+            data.forEach(item => {
+                const row = document.createElement('tr');
+
+                const columns = [
+                    item.InicioPeriodo,
+                    item.FimPeriodo,
+                    item.codigoSegmento,
+                    item.Segmento,
+                    item.codigoModalidade,
+                    item.Modalidade,
+                    item.Posicao,
+                    item.InstituicaoFinanceira,
+                    item.TaxaJurosAoMes,
+                    item.TaxaJurosAoAno,
+                    item.cnpj8
+                ];
+
+                columns.forEach(column => {
+                    const cell = document.createElement('td');
+                    cell.innerText = column;
+                    row.appendChild(cell);
+                });
+
+                tableData.appendChild(row);
+            });
+        }
+    </script>
+</body>
+</html>

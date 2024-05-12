@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="">
+    <head>
+        <title> Pedido Venda </title>
+
+        <script src="https://cdn.jsdelivr.net/gh/wansleynery/SankhyaJX/jx.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+        <script defer>
+
+            let Clientes = [];
+            let Itens = [];
+
+            JX.consultar ('SELECT CODPARC FROM TGFPAR WHERE ROWNUM < 10').then (parceiros => {
+
+                Clientes = parceiros.map (parceiro => Number (parceiro.CODPARC));
+
+                const consultaItens = ``
+                    + `SELECT `
+                    + `    * `
+                    + `FROM `
+                    + `    TGFITE ite `
+                    + `    INNER JOIN TGFCAB cab ON cab.NUNOTA = ite.NUNOTA `
+                    + `WHERE `
+                    + `    cab.CODPARC IN (${ Clientes.join (', ') })`
+                    + `    AND ROWNUM < 10`;
+
+                JX.consultar (consultaItens).then (itensNota => {
+
+                    Itens = itensNota.map (item => item.CODPROD);
+
+                    const ctx = document.getElementById('myChart').getContext('2d');
+const myChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: Clientes, //
+        datasets: [{
+            label: 'Item Counts', //
+            data: Itens, //
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+                });
+            });
+
+        </script>
+    </head>
+
+    <body>
+        <canvas id="myChart" width="100" height="200"></canvas>
+    </body>
+</html>

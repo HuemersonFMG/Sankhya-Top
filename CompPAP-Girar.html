@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+          <html lang="en">
+            <head>
+              <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                  <title>Foto do Aplicativo</title>
+                  <style>
+          .corpofoto {
+              background-color: rgb(255, 255, 255);
+              border: 3px double rgb(66, 16, 248);
+              padding: 1px;
+              margin-bottom: 1px;
+              width: 300x;
+              height: 400px;
+              display: grid;
+              grid-template-rows: 10%, 10%, 80%;
+              grid-template-columns: 1fr;
+              gap: 1px;
+              top: auto;
+          }
+          .comprovante{
+              background-color: rgb(255, 255, 255);
+              border: 1px double rgb(95, 247, 7);
+              padding: 1px;
+              margin-bottom: 1px;
+              width: auto;
+          }
+          .img {
+            transition: transform 1s;
+          }
+
+                  </STYle>
+                </head>
+                <P>Recebido por: $AD_APPRECEBEDOR - em: $DHINC</P>
+                <button type="button">Girar Foto</button>
+                <body class="corpofoto">
+                  <table>
+                    <tbody>
+                      <tr class="comprovante">
+                        <img class="img" src="AD_APPENTFOTO@FOTO@NUNOTA=$NUNOTA@SEQ=1.dbimage">
+                          <img class="img" src="https://topalimentos.com.br/wp-content/uploads/2023/07/LOGO-47.png">
+                          </tr>
+                          <center>
+                            <a href="http://topcesta.fwc.cloud$PORTA/mge/AD_APPENTFOTO@FOTO@NUNOTA=$NUNOTA@SEQ=1.dbimage"
+              target="_blank" rel="noopener noreferrer" >
+              Abrir imagem na Página</a>
+                          </center>
+                        </tbody>
+                      </table>
+                      <script type="text/javascript">
+      document.addEventListener('DOMContentLoaded', function() {
+        var btn = document.querySelector('button');
+        var img = document.querySelector('.img');
+        var currentRotation = 0;
+
+        btn.addEventListener('click', function() {
+        currentRotation += 90; // Adiciona 90 graus ao ângulo atual
+        img.style.transform = 'rotate(' + currentRotation + 'deg)';
+        });
+
+      });
+    </script>
+                    </body></html>

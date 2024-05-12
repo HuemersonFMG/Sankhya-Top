@@ -1,0 +1,642 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Acomp_Compras" language="groovy" pageWidth="842" pageHeight="595" orientation="Landscape" columnWidth="802" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20">
+	<property name="ireport.zoom" value="2.3579476910000023"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<import value="org.apache.commons.codec.binary.Base64"/>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["C:\\Users\\sankhya\\Desktop\\TOP CESTAS\\"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="DI" class="java.sql.Timestamp">
+		<parameterDescription><![CDATA[Data Inicial]]></parameterDescription>
+		<defaultValueExpression><![CDATA[null]]></defaultValueExpression>
+	</parameter>
+	<parameter name="DF" class="java.sql.Timestamp">
+		<parameterDescription><![CDATA[Data Final]]></parameterDescription>
+		<defaultValueExpression><![CDATA[null]]></defaultValueExpression>
+	</parameter>
+	<parameter name="LOCAL" class="java.lang.String">
+		<property name="nomeTabela" value="TGFLOC"/>
+	</parameter>
+	<parameter name="PDIR_MODELO" class="java.lang.String" isForPrompting="false">
+		<defaultValueExpression><![CDATA["d:\\Developer\\Relatoriso - iReport\\modelos\\"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="CODEMP" class="java.math.BigDecimal">
+		<property name="NOMETABELA" value="TSIEMP"/>
+		<parameterDescription><![CDATA[Empresa]]></parameterDescription>
+	</parameter>
+	<parameter name="CODPROD" class="java.math.BigDecimal">
+		<property name="NomeTabela" value="TGFPRO"/>
+		<parameterDescription><![CDATA[Produto]]></parameterDescription>
+		<defaultValueExpression><![CDATA[]]></defaultValueExpression>
+	</parameter>
+	<queryString>
+		<![CDATA[with  vendas_corrente as(
+select ITE.CODPROD,
+       SUM(ITE.QTDNEG) TOTAL_VENDIDO
+
+from TGFCAB CAB
+INNER JOIN TGFITE ITE ON ITE.NUNOTA=CAB.NUNOTA
+WHERE
+        CAB.TIPMOV = 'V'
+        AND ITE.ATUALESTOQUE = -1
+        AND CAB.STATUSNOTA = 'L'
+        AND CAB.DTNEG BETWEEN TRUNC(SYSDATE, 'MM')  AND SYSDATE
+		AND CAB.CODEMP = $P{CODEMP}
+GROUP BY ITE.CODPROD
+
+),
+
+
+vendas_anterior as (
+select ITE.CODPROD,
+       SUM(ITE.QTDNEG) TOTAL_VENDIDO_ANT
+
+from TGFCAB CAB
+INNER JOIN TGFITE ITE ON ITE.NUNOTA=CAB.NUNOTA
+WHERE
+        CAB.TIPMOV = 'V'
+      AND ITE.ATUALESTOQUE = -1
+      AND CAB.DTNEG BETWEEN TRUNC(add_months(SYSDATE, -1), 'MONTH') AND TRUNC(add_months(TRUNC(LAST_DAY(SYSDATE)), -1))
+	  AND CAB.CODEMP = $P{CODEMP}
+GROUP BY ITE.CODPROD
+),
+
+AVARIA AS (
+
+SELECT  EST.CODPROD,
+        SUM(EST.ESTOQUE) ESTOQUE
+FROM TGFEST EST
+WHERE EST.CODLOCAL= '02010000'
+  AND EST.CODEMP = $P{CODEMP}
+GROUP BY EST.CODPROD
+),
+
+
+PROD_EST AS (
+SELECT  EST.CODPROD,
+		SUM(EST.RESERVADO) RESERVADO,
+		SUM(EST.ESTOQUE) ESTOQUE
+FROM TGFEST EST
+WHERE 	EST.CODLOCAL = $P{LOCAL}
+		AND EST.CODEMP = $P{CODEMP}
+GROUP BY EST.CODPROD
+),
+
+
+
+PEDIDOSCOMPRA_PENDENTES AS (
+SELECT
+    CODPROD,
+    SUM(QTD_PEDC_PEN) QTD_PEDC_PEN
+FROM (
+        SELECT
+                ITE.CODPROD,
+                SUM(ITE.QTDNEG-ITE.QTDENTREGUE) QTD_PEDC_PEN
+        FROM TGFCAB CAB
+        INNER JOIN TGFITE ITE ON CAB.NUNOTA = ITE.NUNOTA
+        WHERE   CAB.TIPMOV = 'O' AND ITE.PENDENTE='S'
+        		AND CAB.CODEMP = $P{CODEMP}
+        		AND ($P{DI} is null or CAB.DTNEG >= $P{DI})
+        		AND ($P{DF} is null or  CAB.DTNEG <= $P{DF})
+        GROUP BY ITE.CODPROD
+
+        UNION ALL
+
+        SELECT
+                ITE.CODPROD,
+                SUM(ITE.QTDNEG) QTD_PEDC_PEN
+        FROM TGFCAB CAB
+        INNER JOIN TGFITE ITE ON CAB.NUNOTA = ITE.NUNOTA
+        INNER JOIN TGFTOP TPO ON TPO.CODTIPOPER = CAB.CODTIPOPER AND TPO.DHALTER = CAB.DHTIPOPER AND TPO.ATUALEST = 'E' AND TPO.TIPMOV = 'C'
+        WHERE CAB.STATUSNOTA != 'L'
+                AND CAB.CODEMP = $P{CODEMP}
+        		AND ($P{DI} is null or CAB.DTNEG >= $P{DI})
+        		AND ($P{DF} is null or  CAB.DTNEG <= $P{DF})
+        GROUP BY ITE.CODPROD) TAB
+GROUP BY CODPROD
+),
+
+
+PEDIDOS_PENDENTES AS (
+SELECT
+        ITE.CODPROD,
+        SUM(ITE.QTDNEG-ITE.QTDENTREGUE) QTD_PED_PEN
+FROM TGFCAB CAB
+INNER JOIN TGFTOP TPO ON TPO.CODTIPOPER = CAB.CODTIPOPER AND TPO.DHALTER = CAB.DHTIPOPER AND TPO.ATUALEST = 'N' AND CAB.CODTIPOPER NOT IN  (900,1004,1009,1001)
+INNER JOIN TGFITE ITE ON CAB.NUNOTA = ITE.NUNOTA
+/*INNER JOIN TSILIB LIB ON LIB.NUCHAVE = CAB.NUNOTA AND LIB.EVENTO = 3 AND LIB.DHLIB IS NOT NULL AND DHLIB = (SELECT MAX(DHLIB) FROM TSILIB WHERE NUCHAVE = LIB.NUCHAVE AND EVENTO = LIB.EVENTO)*/
+WHERE   CAB.TIPMOV = 'P'
+		AND CAB.CODEMP = $P{CODEMP}
+		AND ($P{DI} is null or CAB.DTNEG >= $P{DI})
+        AND ($P{DF} is null or  CAB.DTNEG <= $P{DF})
+		AND NVL(ITE.RESERVA,'N') = 'N'
+		AND ITE.PENDENTE = 'S'
+AND (ITE.CODLOCALORIG=$P{LOCAL} OR ITE.CODLOCALORIG=0)
+GROUP BY ITE.CODPROD
+),
+
+PEDIDOS_RESERVADO AS (
+SELECT
+        ITE.CODPROD,
+        SUM(ITE.QTDNEG-ITE.QTDENTREGUE) RESERVADO
+FROM TGFCAB CAB
+INNER JOIN TGFITE ITE ON CAB.NUNOTA = ITE.NUNOTA
+/*INNER JOIN TSILIB LIB ON LIB.NUCHAVE = CAB.NUNOTA AND LIB.EVENTO = 3 AND LIB.DHLIB IS NOT NULL AND DHLIB = (SELECT MAX(DHLIB) FROM TSILIB WHERE NUCHAVE = LIB.NUCHAVE AND EVENTO = LIB.EVENTO)*/
+WHERE   CAB.TIPMOV = 'P'
+		AND CAB.CODEMP = $P{CODEMP}
+		AND ($P{DI} is null or CAB.DTNEG >= $P{DI})
+		AND ($P{DF} is null or  CAB.DTNEG <= $P{DF})
+		AND NVL(ITE.RESERVA,'N') = 'S'
+		AND ITE.PENDENTE = 'S'
+AND (ITE.CODLOCALORIG=$P{LOCAL} OR ITE.CODLOCALORIG=0)
+GROUP BY ITE.CODPROD
+)
+
+SELECT
+	PRO.CODPROD,
+       	PRO.DESCRPROD,
+	LOC.DESCRLOCAL,
+ 	NVL(PRO.REFERENCIA,to_char(PRO.CODPROD)) REFERENCIA,
+	NVL(VC.TOTAL_VENDIDO,0) TOTAL_VENDIDO,
+	NVL(VA.TOTAL_VENDIDO_ANT,0) TOTAL_VENDIDO_ANT,
+	NVL(AV.ESTOQUE,0) QUARENTENA,
+	NVL(DEST.ESTOQUE,0) ESTOQUE,
+	NVL(EST.ESTMIN,0) ESTMIN,
+	NVL(PR.RESERVADO,0) RESERVADO,
+	NVL(PP.QTD_PED_PEN,0) NECESSIDADE,
+       	NVL(PC.QTD_PEDC_PEN,0) COMPRAPEN,
+	(NVL(DEST.ESTOQUE,0)+ NVL(PC.QTD_PEDC_PEN,0) ) - NVL(EST.ESTMIN,0) - NVL(PR.RESERVADO,0) - NVL(PP.QTD_PED_PEN,0) SALDO,
+    NVL(DEST.ESTOQUE,0) - NVL(PR.RESERVADO,0) - NVL(PP.QTD_PED_PEN,0) DIFERENCA
+FROM TGFPRO PRO
+LEFT JOIN PROD_EST DEST ON DEST.CODPROD = PRO.CODPROD
+LEFT JOIN VENDAS_CORRENTE VC ON VC.CODPROD = PRO.CODPROD
+LEFT JOIN VENDAS_ANTERIOR VA ON VA.CODPROD = PRO.CODPROD
+LEFT JOIN AVARIA AV ON AV.CODPROD = PRO.CODPROD
+LEFT JOIN PEDIDOS_PENDENTES PP ON PP.CODPROD = PRO.CODPROD
+LEFT JOIN PEDIDOS_RESERVADO PR ON PR.CODPROD = PRO.CODPROD
+LEFT JOIN PEDIDOSCOMPRA_PENDENTES PC ON PC.CODPROD = PRO.CODPROD
+LEFT JOIN TGFLOC LOC ON LOC.CODLOCAL = $P{LOCAL}
+LEFT JOIN AD_TGFCONTEST EST ON EST.CODPROD=PRO.CODPROD AND EST.CODEMP=$P{CODEMP}
+
+WHERE   PRO.CODGRUPOPROD != '9010000'
+AND PRO.USOPROD='R'
+AND (NVL(PR.RESERVADO,0)>0 OR NVL(PP.QTD_PED_PEN,0)>0 or  DEST.ESTOQUE>0)
+AND (PRO.CODPROD = $P{CODPROD} OR $P{CODPROD} IS NULL)
+--AND DEST.ESTOQUE>0
+ORDER BY  PRO.DESCRPROD]]>
+	</queryString>
+	<field name="DESCRPROD" class="java.lang.String"/>
+	<field name="DESCRLOCAL" class="java.lang.String"/>
+	<field name="REFERENCIA" class="java.lang.String"/>
+	<field name="TOTAL_VENDIDO_ANT" class="java.math.BigDecimal"/>
+	<field name="TOTAL_VENDIDO" class="java.math.BigDecimal"/>
+	<field name="QUARENTENA" class="java.math.BigDecimal"/>
+	<field name="ESTOQUE" class="java.math.BigDecimal"/>
+	<field name="RESERVADO" class="java.math.BigDecimal"/>
+	<field name="ESTMIN" class="java.math.BigDecimal"/>
+	<field name="NECESSIDADE" class="java.math.BigDecimal"/>
+	<field name="COMPRAPEN" class="java.math.BigDecimal"/>
+	<field name="SALDO" class="java.math.BigDecimal"/>
+	<field name="DIFERENCA" class="java.math.BigDecimal"/>
+	<field name="CODPROD" class="java.math.BigDecimal"/>
+	<pageHeader>
+		<band height="20">
+			<staticText>
+				<reportElement mode="Opaque" x="0" y="0" width="71" height="20" backcolor="#CCCCCC"/>
+				<box leftPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="6" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Cód. Barras]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="406" y="0" width="40" height="20" backcolor="#CCCCCC"/>
+				<box leftPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="6" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Mês Vigente]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="446" y="0" width="40" height="20" backcolor="#CCCCCC"/>
+				<box leftPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="6" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Danificado]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="486" y="0" width="40" height="20" backcolor="#CCCCCC"/>
+				<box leftPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="6" isBold="true"/>
+				</textElement>
+				<text><![CDATA[E - Estoque]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="526" y="0" width="40" height="20" backcolor="#CCCCCC"/>
+				<box leftPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="6" isBold="true"/>
+				</textElement>
+				<text><![CDATA[M - Minimo]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="606" y="0" width="38" height="20" backcolor="#CCCCCC"/>
+				<box leftPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="6" isBold="true"/>
+				</textElement>
+				<text><![CDATA[R - Reservado]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="644" y="0" width="40" height="20" backcolor="#CCCCCC"/>
+				<box leftPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="6" isBold="true"/>
+				</textElement>
+				<text><![CDATA[N - Não Resrvado]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="739" y="0" width="62" height="20" backcolor="#CCCCCC"/>
+				<box leftPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="6" isBold="true"/>
+				</textElement>
+				<text><![CDATA[(E - M + C - R - N) Saldo]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="566" y="0" width="40" height="20" backcolor="#CCCCCC"/>
+				<box leftPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="6" isBold="true"/>
+				</textElement>
+				<text><![CDATA[C - Comprado]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="71" y="0" width="40" height="20" backcolor="#CCCCCC"/>
+				<box leftPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="6" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Código]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="365" y="0" width="41" height="20" backcolor="#CCCCCC"/>
+				<box leftPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="6" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Mês Anterior]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="684" y="0" width="55" height="20" backcolor="#CCCCCC"/>
+				<box leftPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="6" isBold="true"/>
+				</textElement>
+				<text><![CDATA[(E - R - N) Diferença]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="275" y="0" width="44" height="20" backcolor="#CCCCCC"/>
+				<box leftPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="6" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Local]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="319" y="0" width="23" height="20" backcolor="#CCCCCC"/>
+				<box leftPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="6" isBold="true"/>
+				</textElement>
+				<text><![CDATA[De]]></text>
+			</staticText>
+			<staticText>
+				<reportElement mode="Opaque" x="342" y="0" width="23" height="20" backcolor="#CCCCCC"/>
+				<box leftPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="6" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Ate]]></text>
+			</staticText>
+			<elementGroup>
+				<staticText>
+					<reportElement mode="Opaque" x="111" y="0" width="164" height="20" backcolor="#CCCCCC"/>
+					<box leftPadding="2">
+						<pen lineWidth="0.5"/>
+						<topPen lineWidth="0.5"/>
+						<leftPen lineWidth="0.5"/>
+						<bottomPen lineWidth="0.5"/>
+						<rightPen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font fontName="Arial" size="6" isBold="true"/>
+					</textElement>
+					<text><![CDATA[Descrição]]></text>
+				</staticText>
+			</elementGroup>
+		</band>
+	</pageHeader>
+	<detail>
+		<band height="17" splitType="Stretch">
+			<textField pattern="###0">
+				<reportElement x="111" y="0" width="164" height="17"/>
+				<box leftPadding="2">
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{DESCRPROD}]]></textFieldExpression>
+			</textField>
+			<textField pattern="###0">
+				<reportElement x="0" y="0" width="71" height="17"/>
+				<box>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{REFERENCIA}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0">
+				<reportElement x="365" y="0" width="41" height="17"/>
+				<box>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{TOTAL_VENDIDO_ANT}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0">
+				<reportElement x="406" y="0" width="40" height="17"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{TOTAL_VENDIDO}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0">
+				<reportElement x="446" y="0" width="40" height="17"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{QUARENTENA}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0">
+				<reportElement x="486" y="0" width="40" height="17"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{ESTOQUE}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0">
+				<reportElement x="526" y="0" width="40" height="17"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{ESTMIN}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0">
+				<reportElement x="606" y="0" width="38" height="17"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{RESERVADO}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0">
+				<reportElement x="644" y="0" width="40" height="17"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{NECESSIDADE}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0">
+				<reportElement x="739" y="0" width="62" height="17"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{SALDO}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0">
+				<reportElement x="566" y="0" width="40" height="17"/>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{COMPRAPEN}]]></textFieldExpression>
+			</textField>
+			<textField pattern="###0">
+				<reportElement x="71" y="0" width="40" height="17"/>
+				<box>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{CODPROD}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="684" y="0" width="55" height="17"/>
+				<box>
+					<topPen lineWidth="0.5" lineStyle="Solid"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.math.BigDecimal"><![CDATA[$F{DIFERENCA}]]></textFieldExpression>
+			</textField>
+			<textField pattern="###0" isBlankWhenNull="true">
+				<reportElement x="275" y="0" width="44" height="17"/>
+				<box>
+					<leftPen lineWidth="0.0"/>
+					<bottomPen lineWidth="0.0"/>
+					<rightPen lineWidth="0.0"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{DESCRLOCAL}]]></textFieldExpression>
+			</textField>
+			<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
+				<reportElement x="319" y="0" width="23" height="17"/>
+				<box>
+					<bottomPen lineWidth="0.0"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.sql.Timestamp"><![CDATA[$P{DI}]]></textFieldExpression>
+			</textField>
+			<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
+				<reportElement x="342" y="0" width="23" height="17"/>
+				<box>
+					<bottomPen lineWidth="0.0"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="6"/>
+				</textElement>
+				<textFieldExpression class="java.sql.Timestamp"><![CDATA[$P{DF}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Chamado</title>
+</head>
+<body>
+    <form  method="post">
+        <label for="categoria">Categoria:</label>
+        <select class="campo" name="categoria" id="categoria">
+            <option value="">Selecione uma categoria</option>
+            <option value="Categoria1">Categoria 1</option>
+            <option value="Categoria2">Categoria 2</option>
+            <option value="Categoria3">Categoria 3</option>
+        </select>
+            <br>
+        <label for="tipo">Tipo:</label>
+        <select class="campo" name="tipo" id="tipo">
+            <option value="">Selecione um tipo</option>
+            <option value="pergunta">Pergunta</option>
+            <option value="incidente">Incidente</option>
+            <option value="problema">Problema</option>
+            <option value="tarefa">Tarefa</option>
+        </select>
+            <br>
+        <label for="assunto">Assunto:</label>
+        <input class="campo" type="text" name="assunto" id="assunto" placeholder="Descreva seu assunto aqui.">
+            <br>
+        <label for="descricao">Descrição:</label>
+        <textarea id="descricao" name="descricao" placeholder="Descreva seu problema aqui..."></textarea>
+            <br>
+        <button class="botao-enviar" type="submit">Enviar solicitação</button>
+    </form> 
+</body>
+</html>
